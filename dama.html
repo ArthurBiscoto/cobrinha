@@ -1,0 +1,232 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo de Dama</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<style>
+body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100vh;
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background-color: #3c3c3c;
+}
+
+#board {
+    display: grid;
+    grid-template-columns: repeat(8, 40px);
+    grid-template-rows: repeat(8, 40px);
+    gap: 0;
+    border: 5px solid black;
+}
+
+.square {
+    width: 40px;
+    height: 40px;
+}
+
+.black {
+    background-color: #7c7c7c;
+}
+.white {
+    background-color: #fff;
+}
+
+.piece {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    margin: 5px;
+    box-sizing: border-box;
+    transition: border 0.3s;
+}
+
+.piece.red {
+    background-color: rgb(161, 0, 13);
+}
+
+.piece.black {
+    background-color: rgb(19, 19, 19);
+}
+
+.piece.selected {
+    border: 2px solid yellow;
+}
+
+.piece.king {
+    background-color: gold;
+}
+.piece.king.piece.selected{
+    border: 2px solid black;
+}
+
+#controls {
+    margin-top: 20px;
+    text-align: center;
+}
+
+#message {
+    font-size: 18px;
+    margin-bottom: 10px;
+}
+
+#reset {
+    display: none;
+    padding: 10px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    left: 50%;
+    transform: translateX(-50%);
+    position: fixed;
+    text-align: center;
+}
+
+
+</style>
+<body>
+
+    <h1>Jogo de Dama</h1>
+    <div id="board"></div>
+    <div id="controls">
+        <p id="message"></p>
+        <button id="reset" onclick="resetGame()">Resetar Jogo</button>
+    </div>
+
+
+    <script>
+
+
+const board = document.getElementById('board');
+const messageElement = document.getElementById('message');
+const resetButton = document.getElementById('reset');
+const rows = 8;
+const cols = 8;
+let selectedPiece = null;
+let currentPlayer = 'red';  // O jogador inicial será 'red'
+
+function createBoard() {
+    board.innerHTML = '';
+    for (let row = 0; row < rows; row++) {
+        for (let col = 0; col < cols; col++) {
+            const square = document.createElement('div');
+            square.classList.add('square');
+            if ((row + col) % 2 === 0) {
+                square.classList.add('white');
+            } else {
+                square.classList.add('black');
+                if (row < 3) {
+                    const piece = document.createElement('div');
+                    piece.classList.add('piece', 'red');
+                    piece.addEventListener('click', selectPiece);
+                    square.appendChild(piece);
+                } else if (row > 4) {
+                    const piece = document.createElement('div');
+                    piece.classList.add('piece', 'black');
+                    piece.addEventListener('click', selectPiece);
+                    square.appendChild(piece);
+                }
+            }
+            square.dataset.row = row;
+            square.dataset.col = col;
+            square.addEventListener('click', movePiece);
+            board.appendChild(square);
+        }
+    }
+}
+
+function selectPiece(event) {
+    const piece = event.target;
+    if (piece.classList.contains(currentPlayer)) {
+        if (selectedPiece) {
+            selectedPiece.classList.remove('selected');
+        }
+        selectedPiece = piece;
+        selectedPiece.classList.add('selected');
+    }
+}
+
+function movePiece(event) {
+    if (selectedPiece) {
+        const targetSquare = event.target;
+        if (targetSquare.classList.contains('piece')) {
+            return;
+        }
+        const pieceRow = parseInt(selectedPiece.parentElement.dataset.row);
+        const pieceCol = parseInt(selectedPiece.parentElement.dataset.col);
+        const targetRow = parseInt(targetSquare.dataset.row);
+        const targetCol = parseInt(targetSquare.dataset.col);
+
+        const rowDiff = Math.abs(targetRow - pieceRow);
+        const colDiff = Math.abs(targetCol - pieceCol);
+
+        const isKing = selectedPiece.classList.contains('king');
+        const validDirection = isKing || (currentPlayer === 'red' ? targetRow > pieceRow : targetRow < pieceRow);
+
+        if (rowDiff === 1 && colDiff === 1 && validDirection) {
+            targetSquare.appendChild(selectedPiece);
+            promotePiece(targetRow, selectedPiece);
+            selectedPiece.classList.remove('selected');
+            selectedPiece = null;
+            currentPlayer = currentPlayer === 'red' ? 'black' : 'red';
+            checkForWinner();
+        } else if (rowDiff === 2 && colDiff === 2 && validDirection) {
+            const middleRow = (pieceRow + targetRow) / 2;
+            const middleCol = (pieceCol + targetCol) / 2;
+            const middleSquare = document.querySelector(`[data-row='${middleRow}'][data-col='${middleCol}']`);
+            const middlePiece = middleSquare.querySelector('.piece');
+
+            if (middlePiece && !middlePiece.classList.contains(currentPlayer)) {
+                middleSquare.removeChild(middlePiece);
+                targetSquare.appendChild(selectedPiece);
+                promotePiece(targetRow, selectedPiece);
+                selectedPiece.classList.remove('selected');
+                selectedPiece = null;
+                currentPlayer = currentPlayer === 'red' ? 'black' : 'red';
+                checkForWinner();
+            }
+        }
+    }
+}
+
+function promotePiece(row, piece) {
+    if ((currentPlayer === 'red' && row === rows - 1) || (currentPlayer === 'black' && row === 0)) {
+        piece.classList.add('king');
+    }
+}
+
+function checkForWinner() {
+    const redPieces = document.querySelectorAll('.piece.red').length;
+    const blackPieces = document.querySelectorAll('.piece.black').length;
+
+    if (redPieces === 0) {
+        displayWinner('Black');
+    } else if (blackPieces === 0) {
+        displayWinner('Red');
+    }
+}
+
+function displayWinner(winner) {
+    messageElement.textContent = `O jogador ${winner} venceu!`;
+    resetButton.style.display = 'block';
+}
+
+function resetGame() {
+    selectedPiece = null;
+    currentPlayer = 'red';
+    messageElement.textContent = '';
+    resetButton.style.display = 'none';
+    createBoard();
+}
+
+createBoard();
+
+
+    </script>
+</body>
+</html>
