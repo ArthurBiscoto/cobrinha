@@ -15,10 +15,17 @@
             color: white;
             margin: 0;
             font-family: Arial, sans-serif;
+            overflow: hidden;
         }
         canvas {
             border: 1px solid #333;
             background-color: #1e1e1e;
+            background-image: linear-gradient(45deg, #1f1f1f 25%, transparent 25%), 
+                              linear-gradient(-45deg, #1f1f1f 25%, transparent 25%),
+                              linear-gradient(45deg, transparent 75%, #1f1f1f 75%), 
+                              linear-gradient(-45deg, transparent 75%, #1f1f1f 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
         }
         .controls {
             display: none;
@@ -51,18 +58,17 @@
         }
         @media (min-width: 900px) {
             canvas {
-                width: 800px;
-                height: 800px;
+                width: 500px;
+                height: 500px;
             }
         }
         @media (max-width: 899px) {
             canvas {
-                width: 350px;
-                height: 350px;
+                width: 300px;
+                height: 300px;
             }
             .controls {
                 display: flex;
-
             }
             .controls button {
                 width: 100px;
@@ -77,7 +83,7 @@
     </style>
 </head>
 <body>
-    <canvas id="gameCanvas" width="900" height="900"></canvas>
+    <canvas id="gameCanvas"></canvas>
     <div class="controls">
         <div class="up-down">
             <button id="upBtn">↑</button>
@@ -96,9 +102,11 @@
         let tileCount;
 
         if (window.innerWidth >= 900) {
-            gridSize = 30;
+            gridSize = 25;
+            canvas.width = 500;
+            canvas.height = 500;
         } else {
-            gridSize = 12.5;
+            gridSize = 15;
             canvas.width = 300;
             canvas.height = 300;
         }
@@ -106,12 +114,10 @@
 
         let snake = [{ x: tileCount / 2, y: tileCount / 2 }];
         let direction = { x: 0, y: 0 };
-        let food = { x: 5, y: 5 };
-        let bigFood = { x: 10, y: 10 }; // Nova frutinha
-        let score = 1;
-
-        let snakeColor = { r: 0, g: 255, b: 0 };
-        let colorChangeSpeed = 20; // Aumente este valor para uma mudança de cor mais rápida
+        let food1 = { x: 5, y: 5 };
+        let food2 = { x: 10, y: 10 };
+        let food3 = { x: 15, y: 15 };
+        let score = 0;
 
         document.addEventListener('keydown', changeDirection);
         document.getElementById('upBtn').addEventListener('click', () => changeDirection({ keyCode: 38 }));
@@ -122,35 +128,32 @@
         function gameLoop() {
             update();
             draw();
-            setTimeout(gameLoop, 80);
+            setTimeout(gameLoop, 100);
         }
 
         function update() {
             const head = { x: snake[0].x + direction.x, y: snake[0].y + direction.y };
 
-            if (head.x < 0) {
-                head.x = tileCount - 1;
-            } else if (head.x >= tileCount) {
-                head.x = 0;
-            }
-            if (head.y < 0) {
-                head.y = tileCount - 1;
-            } else if (head.y >= tileCount) {
-                head.y = 0;
+            // Remover bordas infinitas - resetar se bater na parede
+            if (head.x < 0 || head.x >= tileCount || head.y < 0 || head.y >= tileCount) {
+                resetGame();
+                return;
             }
 
-            if (head.x === food.x && head.y === food.y) {
+            if (head.x === food1.x && head.y === food1.y) {
                 snake.push({});
                 score++;
-                placeFood();
+                placeFood(food1);
             }
-
-            if (head.x === bigFood.x && head.y === bigFood.y) {
-                for (let i = 0; i < 5; i++) {
-                    snake.push({});
-                }
-                score += 5;
-                placeBigFood();
+            if (head.x === food2.x && head.y === food2.y) {
+                snake.push({});
+                score++;
+                placeFood(food2);
+            }
+            if (head.x === food3.x && head.y === food3.y) {
+                snake.push({});
+                score++;
+                placeFood(food3);
             }
 
             for (let i = snake.length - 1; i > 0; i--) {
@@ -162,8 +165,6 @@
             if (collision()) {
                 resetGame();
             }
-
-            changeColor();
         }
 
         function draw() {
@@ -171,18 +172,17 @@
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             snake.forEach(segment => {
-                ctx.fillStyle = `rgb(${snakeColor.r}, ${snakeColor.g}, ${snakeColor.b})`;
+                ctx.fillStyle = 'orange';
                 drawRoundedRect(segment.x * gridSize, segment.y * gridSize, gridSize, gridSize, gridSize / 2);
             });
 
-            ctx.fillStyle = 'orange';
-            drawRoundedRect(food.x * gridSize, food.y * gridSize, gridSize, gridSize, gridSize / 2);
-
-            ctx.fillStyle = 'orange'; // Nova cor para a "bigFood"
-            drawRoundedRect(bigFood.x * gridSize, bigFood.y * gridSize, gridSize, gridSize, gridSize / 2);
+            ctx.fillStyle = 'red';
+            drawRoundedRect(food1.x * gridSize, food1.y * gridSize, gridSize, gridSize, gridSize / 2);
+            drawRoundedRect(food2.x * gridSize, food2.y * gridSize, gridSize, gridSize, gridSize / 2);
+            drawRoundedRect(food3.x * gridSize, food3.y * gridSize, gridSize, gridSize, gridSize / 2);
 
             ctx.fillStyle = 'white';
-            ctx.font = window.innerWidth >= 900 ? '24px Arial' : '16px Arial'; // Tamanho da fonte adaptável
+            ctx.font = window.innerWidth >= 900 ? '15px Arial' : '15px Arial';
             ctx.fillText('Score: ' + score, 10, 30);
         }
 
@@ -214,14 +214,9 @@
             }
         }
 
-        function placeFood() {
+        function placeFood(food) {
             food.x = Math.floor(Math.random() * tileCount);
             food.y = Math.floor(Math.random() * tileCount);
-        }
-
-        function placeBigFood() {
-            bigFood.x = Math.floor(Math.random() * tileCount);
-            bigFood.y = Math.floor(Math.random() * tileCount);
         }
 
         function collision() {
@@ -237,23 +232,12 @@
             snake = [{ x: tileCount / 2, y: tileCount / 2 }];
             direction = { x: 0, y: 0 };
             score = 0;
-            placeFood();
-            placeBigFood();
-        }
-
-        function changeColor() {
-            snakeColor.r += colorChangeSpeed;
-            snakeColor.g -= colorChangeSpeed;
-            if (snakeColor.r > 255) {
-                snakeColor.r = 0;
-            }
-            if (snakeColor.g < 0) {
-                snakeColor.g = 255;
-            }
+            placeFood(food1);
+            placeFood(food2);
+            placeFood(food3);
         }
 
         gameLoop();
     </script>
 </body>
 </html>
-
